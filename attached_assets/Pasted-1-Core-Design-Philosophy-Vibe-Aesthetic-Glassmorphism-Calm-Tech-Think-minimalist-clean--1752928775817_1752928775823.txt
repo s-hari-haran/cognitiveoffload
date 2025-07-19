@@ -1,0 +1,67 @@
+1. Core Design Philosophy & Vibe
+Aesthetic: "Glassmorphism" & "Calm-Tech." Think minimalist, clean, and focused. The UI itself should be a sanctuary from digital noise.
+Default Mode: Dark Mode. The design should be optimized for a dark background, making it easy on the eyes during long work sessions.
+Palette:
+Background: Use a deep, near-black slate or charcoal color (e.g., #111827 or a similar dark gray). Avoid pure black.
+Primary Elements (Cards/Panels): Employ the glassmorphism effect—a semi-transparent background with a backdrop-blur and a subtle border.
+Accent Colors: Use a single, vibrant color for primary call-to-actions (CTAs) and the "Urgent" category to draw attention. A strong electric blue, magenta, or green would work well. Other categories should use more muted colors.
+Text: Use varying opacities of white for hierarchy (e.g., text-white for titles, text-gray-300 for body, text-gray-500 for metadata).
+Typography: Use a clean, sans-serif font like Inter. Ensure clear hierarchy with font weights (e.g., font-bold for summaries, font-medium for labels, font-normal for details).
+Iconography: Use the Lucide React icon library for a consistent, modern, and lightweight look.
+Animation: Use Framer Motion for subtle, purposeful micro-interactions. The UI should feel fluid and responsive, not flashy.
+2. Key Components to Implement
+Based on the project plan, generate the complete code for the following React components. The components should be built with Tailwind CSS for styling and incorporate Framer Motion for animations.
+A. The Main Dashboard (Dashboard.jsx)
+Layout: A three-column, Kanban-style layout for 🔥 URGENT, 💡 FYI, and 🗑 IGNORE.
+Functionality:
+Columns should be clearly labeled with their respective icons and titles.
+The layout should use CSS Grid or Flexbox and be fully responsive.
+Integrate framer-motion's Reorder components to allow users to drag-and-drop WorkItemCards between columns (for future functionality).
+The entire layout should have a gentle staggerChildren animation effect on initial load, so cards animate in one by one.
+B. The Work Item Card (WorkItemCard.jsx)
+This is the most critical component. It must be data-rich yet visually clean.
+Structure & Styling:
+Use the glassmorphism style for the card background.
+Add a subtle, colored border on the left edge of the card to indicate its source (e.g., blue for Gmail, purple for Slack).
+Content (based on the provided JSON data structure):
+Header:
+Left: Source Icon (e.g., Slack, Gmail) from Lucide React.
+Right: urgency_score visualized as a small, color-coded tag or badge (e.g., "🔥 High Impact").
+Summary: The summary text should be the most prominent element, in a bold font weight.
+Action Items: Display action_items as a simple, clean checklist.
+Metadata Footer:
+Left: Stakeholder avatars (stakeholders).
+Right: Deadline (deadline) with a small clock icon.
+Interactivity & Animation (Framer Motion):
+The card should subtly scale up and gain a soft glow (box-shadow) on hover (whileHover={{ scale: 1.03 }}).
+Add a layout prop to the main card div for smooth re-ordering animations.
+Quick action buttons (✅ Done, 🔗 View Context) should be visible on hover.
+C. The Context Panel (ContextPanel.jsx)
+Functionality: This panel should slide in from the right side of the screen when a user clicks "View Context" on a WorkItemCard.
+Styling: It should also use the glassmorphism effect, appearing as a layer above the main dashboard.
+Animation (Framer Motion): Use the AnimatePresence component to handle the slide-in/slide-out animation.
+Content:
+Header: Show the summary of the selected item.
+Body: Create sections for "Related Messages," "Connected Documents," and "Associated Tasks."
+AI Insights: Include a dedicated section for AI Insights (e.g., "Suggested next step: Email stakeholder@example.com about the deadline.").
+3. Data Structure for Props
+Your components should be designed to accept a workItem prop with the following JSON structure. Please use this structure to populate the components with sample data.
+Generated javascript
+const workItem = {
+  "id": "12345",
+  "classification": "🔥 Urgent",
+  "summary": "Client presentation needs final slide deck updates by Friday 3PM.",
+  "action_items": ["Finalize Q4 sales data slide", "Add new marketing campaign results"],
+  "sentiment": "Neutral",
+  "urgency_score": 5, // on a scale of 1-5
+  "effort_estimate": "Medium (15-30min)",
+  "deadline": "Today",
+  "context_tags": ["Project-Phoenix", "Client-ABC"],
+  "stakeholders": ["manager@email.com", "client-lead@email.com"],
+  "business_impact": "High",
+  "source": "slack", // or "gmail", "notion", etc.
+  "follow_up_needed": true
+};
+Use code with caution.
+JavaScript
+Please generate the complete, production-ready code for Dashboard.jsx, WorkItemCard.jsx, and ContextPanel.jsx based on all the requirements above.

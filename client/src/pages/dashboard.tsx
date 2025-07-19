@@ -1,309 +1,293 @@
-import { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useAppContext } from '@/context/AppContext';
-import { useWebSocket } from '@/hooks/useWebSocket';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { WorkItemCard } from '@/components/WorkItemCard';
-import FilterBar from '@/components/FilterBar';
-import { Brain, RefreshCw, Wifi, WifiOff, Mail, MessageSquare } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { useLocation } from 'wouter';
-import type { WorkItem } from '@shared/schema';
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { motion } from "framer-motion";
+import { useState } from "react";
+import { Plus, Mail, MessageSquare, Filter } from "lucide-react";
+import { WorkItemCard } from "@/components/WorkItemCard";
+import { ContextPanel } from "@/components/ContextPanel";
+import FilterBar from "@/components/FilterBar";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { useAppContext } from "@/context/AppContext";
+import { apiRequest } from "@/lib/queryClient";
+import type { WorkItem } from "@shared/schema";
 
 export default function Dashboard() {
-  const [, setLocation] = useLocation();
-  const { state, logout } = useAppContext();
-  const { toast } = useToast();
+  const { logout } = useAppContext();
   const queryClient = useQueryClient();
-  const [currentFilter, setCurrentFilter] = useState<'all' | 'urgent' | 'fyi' | 'ignore'>('all');
-
-  // Redirect to auth if not authenticated
-  useEffect(() => {
-    if (!state.isAuthenticated) {
-      setLocation('/auth');
-    }
-  }, [state.isAuthenticated, setLocation]);
-
-  // WebSocket connection for real-time updates
-  const { isConnected } = useWebSocket((message) => {
-    if (message.type === 'work_item_created' || message.type === 'work_item_updated' || message.type === 'work_item_deleted') {
-      queryClient.invalidateQueries({ queryKey: ['/api/work-items'] });
-    }
-  });
+  const [filters, setFilters] = useState({ classification: "", sourceType: "" });
+  const [selectedItem, setSelectedItem] = useState<WorkItem | null>(null);
+  const [contextPanelOpen, setContextPanelOpen] = useState(false);
 
   // Fetch work items
-  const { data: workItems = [], isLoading, error } = useQuery<WorkItem[]>({
-    queryKey: ['/api/work-items', currentFilter === 'all' ? undefined : `?classification=${currentFilter}`],
-    enabled: state.isAuthenticated,
+  const { data: workItems = [], isLoading } = useQuery<WorkItem[]>({
+    queryKey: ['/api/work-items'],
   });
 
-  // Sync mutation
-  const syncMutation = useMutation({
-    mutationFn: async () => {
-      const response = await fetch('/api/sync', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${state.token}`
-        }
-      });
-      if (!response.ok) throw new Error('Sync failed');
-      return response.json();
-    },
+  // Mark work item as complete
+  const markCompleteMutation = useMutation({
+    mutationFn: (id: number) => apiRequest(`/api/work-items/${id}`, {
+      method: 'PATCH',
+      body: { isCompleted: true }
+    }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/work-items'] });
-      toast({ title: 'Sync completed successfully' });
-    },
-    onError: () => {
-      toast({ title: 'Sync failed', variant: 'destructive' });
+    }
+  });
+
+  // Connect Gmail
+  const connectGmailMutation = useMutation({
+    mutationFn: () => apiRequest('/api/auth/gmail'),
+    onSuccess: (data: { authUrl: string }) => {
+      window.open(data.authUrl, '_blank');
+    }
+  });
+
+  // Connect Slack
+  const connectSlackMutation = useMutation({
+    mutationFn: () => apiRequest('/api/auth/slack'),
+    onSuccess: (data: { authUrl: string }) => {
+      window.open(data.authUrl, '_blank');
     }
   });
 
   // Filter work items
   const filteredItems = workItems.filter(item => {
-    if (currentFilter === 'all') return true;
-    return item.classification === currentFilter;
+    if (filters.classification && item.classification !== filters.classification) return false;
+    if (filters.sourceType && item.sourceType !== filters.sourceType) return false;
+    return true;
   });
 
-  const urgentItems = workItems.filter(item => item.classification === 'urgent');
-  const fyiItems = workItems.filter(item => item.classification === 'fyi');
-  const ignoreItems = workItems.filter(item => item.classification === 'ignore');
+  // Group by classification
+  const urgentItems = filteredItems.filter(item => item.classification === 'urgent');
+  const fyiItems = filteredItems.filter(item => item.classification === 'fyi');
+  const ignoreItems = filteredItems.filter(item => item.classification === 'ignore');
 
-  const handleRefresh = () => {
-    syncMutation.mutate();
+  const handleMarkComplete = (id: number) => {
+    markCompleteMutation.mutate(id);
   };
 
-  const handleLogout = () => {
-    logout();
-    setLocation('/');
+  const handleViewSource = (url: string) => {
+    window.open(url, '_blank');
   };
 
-  if (error) {
+  const handleViewContext = (item: WorkItem) => {
+    setSelectedItem(item);
+    setContextPanelOpen(true);
+  };
+
+  const staggerContainer = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  };
+
+  const staggerItem = {
+    hidden: { opacity: 0, y: 20 },
+    show: { opacity: 1, y: 0 }
+  };
+
+  if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <Card className="max-w-md w-full">
-          <CardContent className="pt-6 text-center">
-            <p className="text-red-600 mb-4">Failed to load dashboard</p>
-            <Button onClick={() => window.location.reload()}>Try Again</Button>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+          className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full"
+        />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 dark:from-slate-900 dark:via-slate-800 dark:to-purple-900">
-      
-      {/* Dashboard Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-4">
-              <Brain className="h-8 w-8 text-purple-600" />
-              <span className="text-xl font-bold text-gray-900">WorkOS Dashboard</span>
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <motion.div 
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="glass-effect border-b border-white/10 sticky top-0 z-30"
+      >
+        <div className="max-w-7xl mx-auto px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-white">Cognitive Offload WorkOS</h1>
+              <p className="text-gray-400 text-sm">Your AI-powered unified dashboard</p>
             </div>
             
             <div className="flex items-center space-x-4">
-              {/* Real-time indicator */}
-              <div className="flex items-center space-x-2 text-sm text-gray-500">
-                {isConnected ? (
-                  <>
-                    <Wifi className="w-4 h-4 text-green-500" />
-                    <span>Live</span>
-                  </>
-                ) : (
-                  <>
-                    <WifiOff className="w-4 h-4 text-red-500" />
-                    <span>Offline</span>
-                  </>
-                )}
-              </div>
-              
-              {/* Connection Status */}
-              <div className="flex items-center space-x-2">
-                <Badge variant={state.connectedServices.gmail ? "default" : "secondary"}>
-                  <Mail className="w-3 h-3 mr-1" />
-                  Gmail
-                </Badge>
-                <Badge variant={state.connectedServices.slack ? "default" : "secondary"}>
-                  <MessageSquare className="w-3 h-3 mr-1" />
-                  Slack
-                </Badge>
-              </div>
-              
-              {/* Refresh Button */}
-              <Button 
-                size="sm" 
+              {/* Integration buttons */}
+              <Button
+                onClick={() => connectGmailMutation.mutate()}
                 variant="outline"
-                onClick={handleRefresh}
-                disabled={syncMutation.isPending}
-                className="hover-lift"
+                size="sm"
+                className="glass-effect border-blue-500/30 text-blue-400 hover:bg-blue-500/10"
+                disabled={connectGmailMutation.isPending}
               >
-                <RefreshCw className={`w-4 h-4 ${syncMutation.isPending ? 'animate-spin' : ''}`} />
+                <Mail className="w-4 h-4 mr-2" />
+                Connect Gmail
               </Button>
               
-              {/* User Menu */}
-              <Button 
+              <Button
+                onClick={() => connectSlackMutation.mutate()}
+                variant="outline"
                 size="sm"
-                variant="ghost"
-                onClick={handleLogout}
-                className="flex items-center space-x-2 text-gray-700 hover:text-gray-900"
+                className="glass-effect border-purple-500/30 text-purple-400 hover:bg-purple-500/10"
+                disabled={connectSlackMutation.isPending}
               >
-                <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-green-500 rounded-full flex items-center justify-center">
-                  <span className="text-white text-sm font-medium">
-                    {state.user?.name?.charAt(0) || 'U'}
-                  </span>
-                </div>
+                <MessageSquare className="w-4 h-4 mr-2" />
+                Connect Slack
+              </Button>
+              
+              <Button
+                onClick={logout}
+                variant="ghost"
+                size="sm"
+                className="text-gray-400 hover:text-white"
+              >
+                Logout
               </Button>
             </div>
           </div>
         </div>
-      </header>
+      </motion.div>
 
-      {/* Dashboard Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        
-        {/* Filter Bar */}
-        <FilterBar
-          currentFilter={currentFilter}
-          onFilterChange={setCurrentFilter}
-          counts={{
-            all: workItems.length,
-            urgent: urgentItems.length,
-            fyi: fyiItems.length,
-            ignore: ignoreItems.length
-          }}
-          lastSync="2 minutes ago"
-        />
+      {/* Filter Bar */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="max-w-7xl mx-auto px-6 py-6"
+      >
+        <FilterBar filters={filters} onFiltersChange={setFilters} />
+      </motion.div>
 
-        {/* Loading State */}
-        {isLoading && (
-          <div className="flex items-center justify-center py-20">
-            <RefreshCw className="w-8 h-8 animate-spin text-purple-600" />
-            <span className="ml-2 text-gray-600">Loading your work items...</span>
-          </div>
-        )}
-
-        {/* Empty State */}
-        {!isLoading && filteredItems.length === 0 && (
-          <motion.div 
-            className="text-center py-20"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.5 }}
-          >
-            <Brain className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              {currentFilter === 'all' ? 'No work items yet' : `No ${currentFilter} items`}
-            </h3>
-            <p className="text-gray-600 mb-6 max-w-md mx-auto">
-              {currentFilter === 'all' 
-                ? 'Connect your accounts and sync to see your communications processed by AI.'
-                : `There are currently no items classified as ${currentFilter}.`}
-            </p>
-            {currentFilter === 'all' && (
-              <Button onClick={handleRefresh} disabled={syncMutation.isPending} className="gradient-primary text-white hover-lift">
-                {syncMutation.isPending ? 'Syncing...' : 'Sync Now'}
-              </Button>
-            )}
-          </motion.div>
-        )}
-
-        {/* Work Items Display */}
-        {!isLoading && filteredItems.length > 0 && (
-          <div className="space-y-6">
-            {currentFilter === 'all' ? (
-              // 3-Column Layout for All Items
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-6 pb-8">
+        <motion.div
+          variants={staggerContainer}
+          initial="hidden"
+          animate="show"
+          className="grid grid-cols-1 lg:grid-cols-3 gap-8"
+        >
+          {/* Urgent Column */}
+          <motion.div variants={staggerItem}>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                  <h2 className="text-lg font-bold text-white">🔥 URGENT</h2>
+                  <Badge variant="outline" className="text-red-400 border-red-500/30">
+                    {urgentItems.length}
+                  </Badge>
+                </div>
+              </div>
+              
+              <motion.div 
+                className="space-y-4 stagger-children"
+                variants={staggerContainer}
+              >
+                {urgentItems.map((item) => (
+                  <WorkItemCard
+                    key={item.id}
+                    item={item}
+                    onMarkComplete={handleMarkComplete}
+                    onViewSource={handleViewSource}
+                  />
+                ))}
                 
-                {/* Urgent Column */}
-                <div className="space-y-4">
-                  <div className="flex items-center space-x-2 mb-4">
-                    <h2 className="text-lg font-semibold text-red-700">🔥 Urgent</h2>
-                    <Badge variant="outline" className="bg-red-50 text-red-700">
-                      {urgentItems.length}
-                    </Badge>
+                {urgentItems.length === 0 && (
+                  <div className="glass-effect rounded-xl p-8 text-center">
+                    <p className="text-gray-400">No urgent items</p>
+                    <p className="text-sm text-gray-500 mt-1">All caught up! 🎉</p>
                   </div>
-                  <div className="space-y-4">
-                    {urgentItems.map((item) => (
-                      <motion.div
-                        key={item.id}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.3 }}
-                      >
-                        <WorkItemCard item={item} />
-                      </motion.div>
-                    ))}
-                  </div>
-                </div>
+                )}
+              </motion.div>
+            </div>
+          </motion.div>
 
-                {/* FYI Column */}
-                <div className="space-y-4">
-                  <div className="flex items-center space-x-2 mb-4">
-                    <h2 className="text-lg font-semibold text-blue-700">💡 FYI</h2>
-                    <Badge variant="outline" className="bg-blue-50 text-blue-700">
-                      {fyiItems.length}
-                    </Badge>
-                  </div>
-                  <div className="space-y-4">
-                    {fyiItems.map((item) => (
-                      <motion.div
-                        key={item.id}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.3, delay: 0.1 }}
-                      >
-                        <WorkItemCard item={item} />
-                      </motion.div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Ignore Column */}
-                <div className="space-y-4">
-                  <div className="flex items-center space-x-2 mb-4">
-                    <h2 className="text-lg font-semibold text-gray-600">🗑 Ignore</h2>
-                    <Badge variant="outline" className="bg-gray-50 text-gray-600">
-                      {ignoreItems.length}
-                    </Badge>
-                  </div>
-                  <div className="space-y-4">
-                    {ignoreItems.map((item) => (
-                      <motion.div
-                        key={item.id}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.3, delay: 0.2 }}
-                      >
-                        <WorkItemCard item={item} />
-                      </motion.div>
-                    ))}
-                  </div>
+          {/* FYI Column */}
+          <motion.div variants={staggerItem}>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                  <h2 className="text-lg font-bold text-white">💡 FYI</h2>
+                  <Badge variant="outline" className="text-blue-400 border-blue-500/30">
+                    {fyiItems.length}
+                  </Badge>
                 </div>
               </div>
-            ) : (
-              // Single Column Layout for Filtered Items
-              <div className="max-w-4xl mx-auto">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {filteredItems.map((item) => (
-                    <motion.div
-                      key={item.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3 }}
-                    >
-                      <WorkItemCard item={item} />
-                    </motion.div>
-                  ))}
+              
+              <motion.div 
+                className="space-y-4 stagger-children"
+                variants={staggerContainer}
+              >
+                {fyiItems.map((item) => (
+                  <WorkItemCard
+                    key={item.id}
+                    item={item}
+                    onMarkComplete={handleMarkComplete}
+                    onViewSource={handleViewSource}
+                  />
+                ))}
+                
+                {fyiItems.length === 0 && (
+                  <div className="glass-effect rounded-xl p-8 text-center">
+                    <p className="text-gray-400">No FYI items</p>
+                    <p className="text-sm text-gray-500 mt-1">Stay informed 📚</p>
+                  </div>
+                )}
+              </motion.div>
+            </div>
+          </motion.div>
+
+          {/* Ignore Column */}
+          <motion.div variants={staggerItem}>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="w-3 h-3 bg-gray-500 rounded-full"></div>
+                  <h2 className="text-lg font-bold text-white">🗑️ IGNORE</h2>
+                  <Badge variant="outline" className="text-gray-400 border-gray-500/30">
+                    {ignoreItems.length}
+                  </Badge>
                 </div>
               </div>
-            )}
-          </div>
-        )}
-      </main>
+              
+              <motion.div 
+                className="space-y-4 stagger-children"
+                variants={staggerContainer}
+              >
+                {ignoreItems.map((item) => (
+                  <WorkItemCard
+                    key={item.id}
+                    item={item}
+                    onMarkComplete={handleMarkComplete}
+                    onViewSource={handleViewSource}
+                  />
+                ))}
+                
+                {ignoreItems.length === 0 && (
+                  <div className="glass-effect rounded-xl p-8 text-center">
+                    <p className="text-gray-400">No items to ignore</p>
+                    <p className="text-sm text-gray-500 mt-1">Clean slate 🧹</p>
+                  </div>
+                )}
+              </motion.div>
+            </div>
+          </motion.div>
+        </motion.div>
+      </div>
+
+      {/* Context Panel */}
+      <ContextPanel
+        item={selectedItem}
+        isOpen={contextPanelOpen}
+        onClose={() => setContextPanelOpen(false)}
+      />
     </div>
   );
 }

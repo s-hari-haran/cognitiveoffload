@@ -3,60 +3,46 @@
 @tailwind utilities;
 
 :root {
-  --background: hsl(216, 27%, 96%);
-  --foreground: hsl(221, 39%, 11%);
-  --muted: hsl(217, 32%, 93%);
-  --muted-foreground: hsl(218, 11%, 45%);
-  --popover: hsl(0, 0%, 100%);
-  --popover-foreground: hsl(221, 39%, 11%);
-  --card: hsl(0, 0%, 100%);
-  --card-foreground: hsl(221, 39%, 11%);
-  --border: hsl(217, 32%, 89%);
-  --input: hsl(217, 32%, 89%);
-  --primary: hsl(262, 100%, 69%);
-  --primary-foreground: hsl(0, 0%, 100%);
-  --secondary: hsl(217, 32%, 93%);
-  --secondary-foreground: hsl(221, 39%, 11%);
-  --accent: hsl(217, 32%, 93%);
-  --accent-foreground: hsl(221, 39%, 11%);
-  --destructive: hsl(0, 85%, 60%);
-  --destructive-foreground: hsl(0, 0%, 100%);
-  --ring: hsl(262, 100%, 69%);
-  --radius: 0.75rem;
-
-  /* Modern WorkOS color palette */
-  --neon-purple: hsl(262, 100%, 69%);
-  --electric-blue: hsl(220, 100%, 66%);
-  --cyber-green: hsl(142, 76%, 54%);
-  --flame-orange: hsl(25, 95%, 53%);
-  --hot-pink: hsl(322, 100%, 69%);
-  --matrix-green: hsl(142, 76%, 36%);
-  --deep-space: hsl(234, 89%, 8%);
-  --midnight-blue: hsl(221, 39%, 11%);
-  --silver-mist: hsl(217, 32%, 93%);
-}
-
-.dark {
-  --background: hsl(234, 89%, 8%);
+  /* Glassmorphism & Calm Tech Color Palette - Dark Mode Default */
+  --background: #111827; /* Deep charcoal background */
   --foreground: hsl(0, 0%, 95%);
-  --muted: hsl(234, 89%, 15%);
-  --muted-foreground: hsl(217, 32%, 65%);
-  --popover: hsl(234, 89%, 12%);
+  --muted: rgba(255, 255, 255, 0.1);
+  --muted-foreground: hsl(0, 0%, 60%);
+  --popover: rgba(255, 255, 255, 0.05);
   --popover-foreground: hsl(0, 0%, 95%);
-  --card: hsl(234, 89%, 12%);
+  --card: rgba(255, 255, 255, 0.05);
   --card-foreground: hsl(0, 0%, 95%);
-  --border: hsl(234, 89%, 18%);
-  --input: hsl(234, 89%, 18%);
-  --primary: hsl(262, 100%, 69%);
-  --primary-foreground: hsl(234, 89%, 8%);
-  --secondary: hsl(234, 89%, 15%);
+  --border: rgba(255, 255, 255, 0.1);
+  --input: rgba(255, 255, 255, 0.05);
+  --primary: hsl(217, 91%, 60%); /* Electric blue accent */
+  --primary-foreground: hsl(0, 0%, 100%);
+  --secondary: rgba(255, 255, 255, 0.1);
   --secondary-foreground: hsl(0, 0%, 95%);
-  --accent: hsl(234, 89%, 15%);
+  --accent: rgba(255, 255, 255, 0.1);
   --accent-foreground: hsl(0, 0%, 95%);
   --destructive: hsl(0, 85%, 60%);
   --destructive-foreground: hsl(0, 0%, 95%);
-  --ring: hsl(262, 100%, 69%);
+  --ring: hsl(217, 91%, 60%);
   --radius: 0.75rem;
+
+  /* Glassmorphism Design Variables */
+  --glass-bg: rgba(255, 255, 255, 0.05);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-hover: rgba(255, 255, 255, 0.08);
+  
+  /* Category Colors */
+  --urgent: hsl(0, 85%, 60%); /* Red for urgent */
+  --fyi: hsl(217, 91%, 60%); /* Blue for FYI */
+  --ignore: hsl(0, 0%, 60%); /* Gray for ignore */
+  
+  /* Source Colors */
+  --gmail-accent: hsl(217, 91%, 60%); /* Blue for Gmail */
+  --slack-accent: hsl(271, 81%, 56%); /* Purple for Slack */
+}
+
+.dark {
+  --background: #111827;
+  --foreground: hsl(0, 0%, 95%);
 }
 
 @layer base {
@@ -70,70 +56,89 @@
 }
 
 @layer components {
-  .glassmorphism {
-    @apply bg-white/10 backdrop-blur-lg border border-white/20;
+  /* Glassmorphism Base */
+  .glass-effect {
+    background: var(--glass-bg);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--glass-border);
   }
 
-  .gradient-primary {
-    background: linear-gradient(135deg, var(--neon-purple) 0%, var(--electric-blue) 50%, var(--cyber-green) 100%);
+  .glass-hover {
+    transition: all 0.3s ease;
   }
 
-  .gradient-card {
-    background: linear-gradient(145deg, hsl(262, 100%, 69%, 0.1) 0%, hsl(220, 100%, 66%, 0.1) 100%);
+  .glass-hover:hover {
+    background: var(--glass-hover);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    transform: translateY(-2px);
   }
 
-  .gradient-urgent {
-    background: linear-gradient(135deg, var(--flame-orange) 0%, var(--hot-pink) 100%);
-  }
-
-  .gradient-fyi {
-    background: linear-gradient(135deg, var(--electric-blue) 0%, var(--neon-purple) 100%);
-  }
-
-  .gradient-ignore {
-    background: linear-gradient(135deg, var(--silver-mist) 0%, hsl(217, 32%, 85%) 100%);
-  }
-
-  .hover-lift {
-    @apply transition-all duration-200 ease-out;
-  }
-
-  .hover-lift:hover {
-    @apply -translate-y-1 shadow-lg;
-  }
-
-  .pulse-subtle {
-    animation: pulse-subtle 2s infinite;
-  }
-
-  .slide-in {
-    animation: slide-in 0.6s ease-out;
-  }
-
+  /* Work Item Cards */
   .work-item-card {
-    @apply bg-white/90 backdrop-blur-md border border-white/40 shadow-lg rounded-xl;
+    @apply glass-effect glass-hover rounded-xl p-6 transition-all duration-300;
   }
 
   .work-item-card.urgent {
-    @apply border-l-4 border-l-orange-500 bg-gradient-to-r from-orange-50/30 to-pink-50/30 dark:from-orange-900/20 dark:to-pink-900/20;
+    border-left: 4px solid var(--urgent);
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(249, 115, 22, 0.1) 100%);
   }
 
   .work-item-card.fyi {
-    @apply border-l-4 border-l-blue-500 bg-gradient-to-r from-blue-50/30 to-purple-50/30 dark:from-blue-900/20 dark:to-purple-900/20;
+    border-left: 4px solid var(--fyi);
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(147, 51, 234, 0.1) 100%);
   }
 
   .work-item-card.ignore {
-    @apply border-l-4 border-l-gray-400 bg-gradient-to-r from-gray-50/30 to-gray-100/30 dark:from-gray-800/20 dark:to-gray-700/20 opacity-75;
+    border-left: 4px solid var(--ignore);
+    background: linear-gradient(135deg, rgba(107, 114, 128, 0.1) 0%, rgba(75, 85, 99, 0.1) 100%);
+    opacity: 0.7;
   }
 
-  .neon-glow {
-    box-shadow: 0 0 20px hsl(262, 100%, 69%, 0.3);
+  /* Source Indicators */
+  .source-gmail {
+    color: var(--gmail-accent);
   }
 
-  .cyber-border {
-    border: 1px solid hsl(262, 100%, 69%, 0.3);
-    box-shadow: inset 0 0 10px hsl(262, 100%, 69%, 0.1);
+  .source-slack {
+    color: var(--slack-accent);
   }
+
+  /* Urgency Badges */
+  .urgency-high {
+    @apply px-2 py-1 rounded-full text-xs font-medium;
+    background: rgba(239, 68, 68, 0.2);
+    color: var(--urgent);
+  }
+
+  .urgency-medium {
+    @apply px-2 py-1 rounded-full text-xs font-medium;
+    background: rgba(59, 130, 246, 0.2);
+    color: var(--fyi);
+  }
+
+  .urgency-low {
+    @apply px-2 py-1 rounded-full text-xs font-medium;
+    background: rgba(107, 114, 128, 0.2);
+    color: var(--ignore);
+  }
+
+  /* Animation utilities */
+  .stagger-children > * {
+    animation: stagger-in 0.5s ease-out forwards;
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  .stagger-children > *:nth-child(1) { animation-delay: 0.1s; }
+  .stagger-children > *:nth-child(2) { animation-delay: 0.2s; }
+  .stagger-children > *:nth-child(3) { animation-delay: 0.3s; }
+  .stagger-children > *:nth-child(4) { animation-delay: 0.4s; }
+  .stagger-children > *:nth-child(5) { animation-delay: 0.5s; }
+}
+
+@keyframes stagger-in {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes pulse-subtle {

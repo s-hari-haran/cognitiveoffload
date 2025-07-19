@@ -16,8 +16,8 @@ export class MockOAuthService {
 
   constructor() {
     this.gmailConfig = {
-      clientId: process.env.GMAIL_CLIENT_ID || "mock_gmail_client_id",
-      clientSecret: process.env.GMAIL_CLIENT_SECRET || "mock_gmail_secret",
+      clientId: process.env.GOOGLE_CLIENT_ID || "mock_gmail_client_id",
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET || "mock_gmail_secret",
       redirectUri: process.env.GMAIL_REDIRECT_URI || "http://localhost:5000/api/auth/gmail/callback"
     };
 

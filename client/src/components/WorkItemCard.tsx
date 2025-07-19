@@ -1,248 +1,149 @@
-import { Button } from "@/components/ui/button";
+import { motion } from "framer-motion";
+import { Mail, MessageSquare, Clock, Users, CheckCircle, ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
-import { CheckCircle2, Clock, ExternalLink, Flame, Info, Trash2, Mail, MessageSquare } from "lucide-react";
-import { WorkItem } from "@shared/schema";
-import { cn } from "@/lib/utils";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import type { WorkItem } from "@shared/schema";
 
 interface WorkItemCardProps {
   item: WorkItem;
+  onMarkComplete?: (id: number) => void;
+  onViewSource?: (url: string) => void;
 }
 
-export function WorkItemCard({ item }: WorkItemCardProps) {
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-
-  const updateMutation = useMutation({
-    mutationFn: async (updates: Partial<WorkItem>) => 
-      apiRequest(`/api/work-items/${item.id}`, "PATCH", updates),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/work-items"] });
-    },
-    onError: () => {
-      toast({
-        title: "Error",
-        description: "Failed to update work item",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const handleMarkComplete = () => {
-    updateMutation.mutate({ isCompleted: true });
-    toast({
-      title: "Marked as complete",
-      description: "Work item has been completed",
-    });
-  };
-
-  const handleSnooze = () => {
-    const snoozeUntil = new Date();
-    snoozeUntil.setHours(snoozeUntil.getHours() + 4); // Snooze for 4 hours
-    updateMutation.mutate({ 
-      isSnoozed: true, 
-      snoozeUntil: snoozeUntil.toISOString() 
-    });
-    toast({
-      title: "Snoozed",
-      description: "Work item snoozed for 4 hours",
-    });
-  };
-
-  const handleViewSource = () => {
-    if (item.sourceUrl) {
-      window.open(item.sourceUrl, '_blank');
-    } else {
-      toast({
-        title: "No source available",
-        description: "This item doesn't have a source link",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const getClassificationIcon = () => {
-    switch (item.classification) {
-      case 'urgent':
-        return <Flame className="w-4 h-4 text-orange-500" />;
-      case 'fyi':
-        return <Info className="w-4 h-4 text-blue-500" />;
-      case 'ignore':
-        return <Trash2 className="w-4 h-4 text-gray-400" />;
-      default:
-        return <Info className="w-4 h-4 text-gray-500" />;
-    }
-  };
-
+export function WorkItemCard({ item, onMarkComplete, onViewSource }: WorkItemCardProps) {
   const getSourceIcon = () => {
     switch (item.sourceType) {
       case 'gmail':
-        return <Mail className="w-4 h-4" />;
+        return <Mail className="w-4 h-4 source-gmail" />;
       case 'slack':
-        return <MessageSquare className="w-4 h-4" />;
+        return <MessageSquare className="w-4 h-4 source-slack" />;
       default:
-        return null;
+        return <Mail className="w-4 h-4" />;
     }
   };
 
-  const getClassificationColor = () => {
+  const getUrgencyBadge = () => {
+    const urgency = item.urgencyScore || 1;
+    if (urgency >= 4) {
+      return <Badge className="urgency-high">🔥 High Impact</Badge>;
+    } else if (urgency >= 2) {
+      return <Badge className="urgency-medium">💡 Medium</Badge>;
+    } else {
+      return <Badge className="urgency-low">📋 Low</Badge>;
+    }
+  };
+
+  const getClassificationClass = () => {
     switch (item.classification) {
       case 'urgent':
-        return 'border-l-orange-500 bg-gradient-to-r from-orange-50/40 to-pink-50/40 dark:from-orange-900/20 dark:to-pink-900/20';
+        return 'urgent';
       case 'fyi':
-        return 'border-l-blue-500 bg-gradient-to-r from-blue-50/40 to-purple-50/40 dark:from-blue-900/20 dark:to-purple-900/20';
+        return 'fyi';
       case 'ignore':
-        return 'border-l-gray-400 bg-gradient-to-r from-gray-50/40 to-gray-100/40 dark:from-gray-800/20 dark:to-gray-700/20 opacity-75';
+        return 'ignore';
       default:
-        return 'border-l-gray-300 bg-white/80 dark:bg-gray-800/80';
+        return 'fyi';
     }
   };
 
-  const getUrgencyBadgeColor = () => {
-    if (!item.urgencyScore) return 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400';
-    
-    if (item.urgencyScore >= 4) return 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-200';
-    if (item.urgencyScore >= 3) return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-200';
-    if (item.urgencyScore >= 2) return 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-200';
-    return 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400';
-  };
-
-  if (item.isCompleted || item.isSnoozed) {
-    return null; // Don't show completed or snoozed items
-  }
-
   return (
-    <Card className={cn(
-      "work-item-card border-l-4 transition-all duration-300 hover:shadow-xl hover:scale-[1.02] cyber-border",
-      getClassificationColor()
-    )}>
-      <CardContent className="p-6">
-        {/* Header with source and classification */}
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            {getSourceIcon()}
-            <Badge variant="outline" className="text-xs">
-              {item.sourceType.toUpperCase()}
-            </Badge>
-            {getClassificationIcon()}
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      whileHover={{ scale: 1.03 }}
+      transition={{ duration: 0.3 }}
+      className="group"
+    >
+      <Card className={`work-item-card ${getClassificationClass()}`}>
+        <CardHeader className="pb-3">
+          <div className="flex items-start justify-between">
+            <div className="flex items-center space-x-2">
+              {getSourceIcon()}
+              <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">
+                {item.sourceType}
+              </span>
+            </div>
+            {getUrgencyBadge()}
           </div>
-          <div className="flex items-center gap-2">
-            {item.urgencyScore && (
-              <Badge className={cn("text-xs font-medium", getUrgencyBadgeColor())}>
-                Priority {item.urgencyScore}/5
-              </Badge>
-            )}
-            {item.deadline && item.deadline !== 'no_deadline' && (
-              <Badge variant="outline" className="text-xs flex items-center gap-1">
-                <Clock className="w-3 h-3" />
-                {item.deadline.replace('_', ' ')}
-              </Badge>
-            )}
+        </CardHeader>
+        
+        <CardContent className="space-y-4">
+          {/* Summary */}
+          <div>
+            <p className="font-bold text-white leading-relaxed">
+              {item.summary}
+            </p>
           </div>
-        </div>
 
-        {/* Summary */}
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3 leading-tight">
-          {item.summary}
-        </h3>
+          {/* Action Items */}
+          {item.actionItems && item.actionItems.length > 0 && (
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium text-gray-300">Action Items:</h4>
+              <ul className="space-y-1">
+                {item.actionItems.map((action, index) => (
+                  <li key={index} className="flex items-start space-x-2 text-sm text-gray-300">
+                    <span className="w-1.5 h-1.5 bg-blue-400 rounded-full mt-2 flex-shrink-0" />
+                    <span>{action}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
-        {/* Action Items */}
-        {item.actionItems && item.actionItems.length > 0 && (
-          <div className="mb-4">
-            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Action Items:
-            </h4>
-            <ul className="space-y-1">
-              {item.actionItems.slice(0, 3).map((action, index) => (
-                <li key={index} className="text-sm text-gray-600 dark:text-gray-400 flex items-start gap-2">
-                  <span className="text-xs text-purple-500 mt-1">•</span>
-                  {action}
-                </li>
-              ))}
-              {item.actionItems.length > 3 && (
-                <li className="text-xs text-gray-500 dark:text-gray-500 italic">
-                  +{item.actionItems.length - 3} more actions...
-                </li>
+          {/* Metadata Footer */}
+          <div className="flex items-center justify-between pt-3 border-t border-white/10">
+            <div className="flex items-center space-x-4">
+              {/* Stakeholders */}
+              {item.stakeholders && item.stakeholders.length > 0 && (
+                <div className="flex items-center space-x-2">
+                  <Users className="w-3 h-3 text-gray-400" />
+                  <span className="text-xs text-gray-400">
+                    {item.stakeholders.length} stakeholder{item.stakeholders.length !== 1 ? 's' : ''}
+                  </span>
+                </div>
               )}
-            </ul>
-          </div>
-        )}
 
-        {/* Context Tags */}
-        {item.contextTags && item.contextTags.length > 0 && (
-          <div className="mb-4">
-            <div className="flex flex-wrap gap-1">
-              {item.contextTags.slice(0, 4).map((tag, index) => (
-                <Badge key={index} variant="secondary" className="text-xs">
-                  {tag}
-                </Badge>
-              ))}
-              {item.contextTags.length > 4 && (
-                <Badge variant="secondary" className="text-xs">
-                  +{item.contextTags.length - 4}
-                </Badge>
+              {/* Deadline */}
+              {item.deadline && item.deadline !== 'no_deadline' && (
+                <div className="flex items-center space-x-2">
+                  <Clock className="w-3 h-3 text-gray-400" />
+                  <span className="text-xs text-gray-400 capitalize">
+                    {item.deadline.replace('_', ' ')}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Quick Actions */}
+            <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              {!item.isCompleted && onMarkComplete && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => onMarkComplete(item.id)}
+                  className="h-8 px-2 text-green-400 hover:text-green-300 hover:bg-green-400/10"
+                >
+                  <CheckCircle className="w-4 h-4" />
+                </Button>
+              )}
+              
+              {item.sourceUrl && onViewSource && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => onViewSource(item.sourceUrl!)}
+                  className="h-8 px-2 text-blue-400 hover:text-blue-300 hover:bg-blue-400/10"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                </Button>
               )}
             </div>
           </div>
-        )}
-
-        {/* Quick Actions */}
-        <div className="flex items-center gap-2 pt-3 border-t border-gray-200/50 dark:border-gray-700/50">
-          <Button
-            size="sm"
-            variant="default"
-            onClick={handleMarkComplete}
-            disabled={updateMutation.isPending}
-            className="flex items-center gap-1.5 bg-green-600 hover:bg-green-700 text-white"
-          >
-            <CheckCircle2 className="w-4 h-4" />
-            Done
-          </Button>
-          
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={handleSnooze}
-            disabled={updateMutation.isPending}
-            className="flex items-center gap-1.5"
-          >
-            <Clock className="w-4 h-4" />
-            Snooze
-          </Button>
-
-          {item.sourceUrl && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleViewSource}
-              className="flex items-center gap-1.5 ml-auto"
-            >
-              <ExternalLink className="w-4 h-4" />
-              View Source
-            </Button>
-          )}
-        </div>
-
-        {/* Metadata Footer */}
-        <div className="mt-3 pt-2 border-t border-gray-100/50 dark:border-gray-800/50">
-          <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-            <span>
-              {item.sentiment && (
-                <span className="capitalize">{item.sentiment} • </span>
-              )}
-              {item.effortEstimate && (
-                <span>{item.effortEstimate}</span>
-              )}
-            </span>
-            <span>
-              {new Date(item.createdAt).toLocaleDateString()}
-            </span>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </motion.div>
   );
 }
