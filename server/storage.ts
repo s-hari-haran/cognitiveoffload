@@ -1,4 +1,6 @@
 import { users, workItems, type User, type InsertUser, type WorkItem, type InsertWorkItem, type UpdateWorkItem } from "@shared/schema";
+import { db } from "./db";
+import { eq, and } from "drizzle-orm";
 
 export interface IStorage {
   // User methods
@@ -216,4 +218,86 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+export class DatabaseStorage implements IStorage {
+  // User methods
+  async getUser(id: number): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user || undefined;
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user || undefined;
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values(insertUser)
+      .returning();
+    return user;
+  }
+
+  async updateUser(id: number, updates: Partial<User>): Promise<User | undefined> {
+    const [user] = await db
+      .update(users)
+      .set(updates)
+      .where(eq(users.id, id))
+      .returning();
+    return user || undefined;
+  }
+
+  // Work item methods
+  async getWorkItems(userId: number): Promise<WorkItem[]> {
+    const items = await db
+      .select()
+      .from(workItems)
+      .where(eq(workItems.userId, userId));
+    
+    return items.sort((a, b) => {
+      // Sort by urgency score (higher first), then by created date (newer first)
+      if (a.urgencyScore !== b.urgencyScore) {
+        return (b.urgencyScore || 0) - (a.urgencyScore || 0);
+      }
+      return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+    });
+  }
+
+  async getWorkItem(id: number): Promise<WorkItem | undefined> {
+    const [item] = await db.select().from(workItems).where(eq(workItems.id, id));
+    return item || undefined;
+  }
+
+  async createWorkItem(insertWorkItem: InsertWorkItem): Promise<WorkItem> {
+    const [item] = await db
+      .insert(workItems)
+      .values(insertWorkItem)
+      .returning();
+    return item;
+  }
+
+  async updateWorkItem(updates: UpdateWorkItem): Promise<WorkItem | undefined> {
+    const { id, ...updateData } = updates;
+    const [item] = await db
+      .update(workItems)
+      .set({ ...updateData, updatedAt: new Date() })
+      .where(eq(workItems.id, id))
+      .returning();
+    return item || undefined;
+  }
+
+  async deleteWorkItem(id: number): Promise<boolean> {
+    const result = await db.delete(workItems).where(eq(workItems.id, id));
+    return (result.rowCount || 0) > 0;
+  }
+
+  async getWorkItemsByClassification(userId: number, classification: string): Promise<WorkItem[]> {
+    const items = await db
+      .select()
+      .from(workItems)
+      .where(and(eq(workItems.userId, userId), eq(workItems.classification, classification)));
+    return items;
+  }
+}
+
+export const storage = new DatabaseStorage();
