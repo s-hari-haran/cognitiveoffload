@@ -1,5 +1,5 @@
 {
-  "name": "cognitive-canvas",
+  "name": "cognitive-offload",
   "version": "1.0.0",
   "description": "AI-powered workplace dashboard for managing information overload",
   "main": "server/index.ts",
@@ -25,7 +25,7 @@
     "slack",
     "cognitive-offload"
   ],
-  "author": "Cognitive Canvas Team",
+  "author": "Cognitive Offload Team",
   "license": "MIT",
   "dependencies": {
     "@google/generative-ai": "^0.21.0",

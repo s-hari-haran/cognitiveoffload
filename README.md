@@ -23,7 +23,7 @@ Modern knowledge workers are drowning in scattered communications across multipl
 
 ## 🚀 **Solution**
 
-**Cognitive Canvas** is a unified AI-powered dashboard that:
+**Cognitive Offload** is a unified AI-powered dashboard that:
 - 📥 **Ingests data** from Gmail, Slack, and other workplace tools
 - 🤖 **Processes through AI** for intelligent classification and summarization
 - 📊 **Presents insights** in a contextual, actionable interface
@@ -213,4 +213,4 @@ This project is licensed under the MIT License - see the [LICENSE](./LICENSE) fi
 
 ---
 
-**🎯 Transform your scattered communications into organized, actionable insights with Cognitive Canvas!**
+**🎯 Transform your scattered communications into organized, actionable insights with Cognitive Offload!**

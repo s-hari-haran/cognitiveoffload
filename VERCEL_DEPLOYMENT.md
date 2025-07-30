@@ -1,4 +1,4 @@
-# 🚀 **Vercel Deployment Guide - Cognitive Canvas**
+# 🚀 **Vercel Deployment Guide - Cognitive Offload**
 
 ## 📋 **Prerequisites**
 
@@ -54,7 +54,7 @@ After deployment, you'll need to update your OAuth redirect URLs:
 2. **Sign in with GitHub**
 3. **Click "New Project"**
 4. **Import your GitHub repository**
-5. **Select the repository containing your Cognitive Canvas project**
+5. **Select the repository containing your Cognitive Offload project**
 
 ### **2.2 Configure Project Settings**
 
@@ -104,10 +104,10 @@ Click **"Deploy"** and wait for the build to complete!
 curl -sSfL https://get.tur.so/install.sh | bash
 
 # Create database
-turso db create cognitive-canvas
+turso db create cognitive-offload
 
 # Get connection string
-turso db tokens create cognitive-canvas
+turso db tokens create cognitive-offload
 ```
 
 **Option B: Neon (Free Tier)**
@@ -240,7 +240,7 @@ Every pull request gets a preview deployment:
 
 ## 🎉 **Success!**
 
-Your Cognitive Canvas app is now live at:
+Your Cognitive Offload app is now live at:
 `https://your-app-name.vercel.app`
 
 ### **Next Steps:**
@@ -258,4 +258,4 @@ Your Cognitive Canvas app is now live at:
 
 ---
 
-**🎯 Your Cognitive Canvas app is now deployed and ready to help users manage their information overload!** 
+**🎯 Your Cognitive Offload app is now deployed and ready to help users manage their information overload!** 
