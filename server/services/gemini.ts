@@ -1,6 +1,8 @@
-import { GoogleGenAI } from "@google/genai";
+// Standard Gemini API Implementation
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
+// Initialize Gemini client with proper error handling
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
 interface WorkItemAnalysis {
   classification: string;
@@ -16,130 +18,202 @@ interface WorkItemAnalysis {
   follow_up_needed: boolean;
 }
 
+// Input validation and sanitization
+function sanitizeContent(content: string, sourceType: 'gmail' | 'slack'): string {
+  if (!content || typeof content !== 'string') {
+    throw new Error('Invalid content: must be a non-empty string');
+  }
+
+  // Limit content length to prevent API issues
+  const maxLength = 8000; // Safe limit for Gemini
+  if (content.length > maxLength) {
+    content = content.substring(0, maxLength) + '... [truncated]';
+  }
+
+  // Remove HTML tags and decode entities
+  content = content
+    .replace(/<[^>]*>/g, '') // Remove HTML tags
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'");
+
+  // Remove excessive whitespace
+  content = content.replace(/\s+/g, ' ').trim();
+
+  return content;
+}
+
+// Robust JSON parsing with validation
+function parseAIResponse(text: string): WorkItemAnalysis {
+  try {
+    // Try multiple JSON extraction strategies
+    let jsonMatch = text.match(/\{[\s\S]*\}/);
+
+    if (!jsonMatch) {
+      // Try to find JSON after "```json" markers
+      jsonMatch = text.match(/```json\s*(\{[\s\S]*?\})\s*```/);
+      if (jsonMatch) {
+        jsonMatch = [jsonMatch[1]];
+      }
+    }
+
+    if (!jsonMatch) {
+      throw new Error('No valid JSON found in AI response');
+    }
+
+    const parsed = JSON.parse(jsonMatch[0]) as Partial<WorkItemAnalysis>;
+
+    // Validate and normalize all fields
+    return {
+      classification: validateClassification(parsed.classification),
+      summary: validateSummary(parsed.summary),
+      action_items: validateArray(parsed.action_items, 'action_items'),
+      sentiment: validateSentiment(parsed.sentiment),
+      urgency_score: validateUrgencyScore(parsed.urgency_score),
+      effort_estimate: validateEffortEstimate(parsed.effort_estimate),
+      deadline: validateDeadline(parsed.deadline),
+      context_tags: validateArray(parsed.context_tags, 'context_tags'),
+      stakeholders: validateArray(parsed.stakeholders, 'stakeholders'),
+      business_impact: validateBusinessImpact(parsed.business_impact),
+      follow_up_needed: Boolean(parsed.follow_up_needed)
+    };
+  } catch (error) {
+    console.error('❌ Failed to parse AI response:', error);
+    console.error('Raw response:', text);
+    throw new Error(`AI response parsing failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
+
+// Validation functions
+function validateClassification(classification: any): string {
+  const valid = ['urgent', 'fyi', 'ignore'];
+  return valid.includes(classification) ? classification : 'fyi';
+}
+
+function validateSummary(summary: any): string {
+  if (!summary || typeof summary !== 'string') return 'No summary available';
+  return summary.length > 100 ? summary.substring(0, 100) + '...' : summary;
+}
+
+function validateArray(arr: any, fieldName: string): string[] {
+  if (!Array.isArray(arr)) return [];
+  return arr.filter(item => typeof item === 'string' && item.trim().length > 0);
+}
+
+function validateSentiment(sentiment: any): string {
+  const valid = ['positive', 'neutral', 'negative'];
+  return valid.includes(sentiment) ? sentiment : 'neutral';
+}
+
+function validateUrgencyScore(score: any): number {
+  const num = Number(score);
+  return isNaN(num) ? 1 : Math.min(Math.max(num, 1), 5);
+}
+
+function validateEffortEstimate(estimate: any): string {
+  const valid = ['Quick (2-5min)', 'Medium (15-30min)', 'Long (1hr+)'];
+  return valid.includes(estimate) ? estimate : 'Quick (2-5min)';
+}
+
+function validateDeadline(deadline: any): string {
+  const valid = ['Today', 'This Week', 'Next Week', 'No Deadline'];
+  return valid.includes(deadline) ? deadline : 'No Deadline';
+}
+
+function validateBusinessImpact(impact: any): string {
+  const valid = ['High', 'Medium', 'Low'];
+  return valid.includes(impact) ? impact : 'Low';
+}
+
 export async function analyzeWorkItem(content: string, sourceType: 'gmail' | 'slack'): Promise<WorkItemAnalysis> {
   try {
-    const systemPrompt = `
-You are the AI brain of "Cognitive Offload WorkOS" - an intelligent workplace dashboard 
-that helps knowledge workers manage information overload across multiple platforms.
+    // Validate and sanitize input
+    const sanitizedContent = sanitizeContent(content, sourceType);
 
-CORE MISSION:
-Transform scattered communications into organized, prioritized, contextual insights that 
-enable focused work and prevent important items from slipping through cracks.
-
-PROCESSING INTELLIGENCE:
-
-1. SMART CLASSIFICATION:
-   🔥 Urgent: Explicit deadlines, client escalations, manager requests, system alerts
-   💡 FYI: Project updates, meeting notes, informational content, reports  
-   🗑 Ignore: Marketing emails, automated notifications, spam
-
-2. INTELLIGENT SUMMARIZATION (15-20 Words Max):
-   Focus on: WHO needs WHAT by WHEN
-   - Extract key stakeholders
-   - Identify specific deliverables
-   - Highlight time sensitivity
-
-3. ACTION EXTRACTION:
-   Convert vague requests into concrete next steps with specific outcomes
-
-4. CONTEXT MAPPING:
-   Identify connections to projects, clients, team members, tools, deadlines
-
-5. BUSINESS IMPACT SCORING:
-   Urgency Scale (1-5) with effort estimation and deadline awareness
-
-OUTPUT FORMAT (Strict JSON):
-{
-  "classification": "🔥 Urgent" | "💡 FYI" | "🗑 Ignore",
-  "summary": "15-20 word max summary focusing on action/impact",
-  "action_items": ["Specific actionable steps"],
-  "sentiment": "Positive" | "Neutral" | "Negative",
-  "urgency_score": 1-5,
-  "effort_estimate": "Quick (2-5min)" | "Medium (15-30min)" | "Long (1hr+)",
-  "deadline": "Today" | "This Week" | "Next Week" | "No Deadline",
-  "context_tags": ["project-names", "client-names", "tools"],
-  "stakeholders": ["email@domain.com"],
-  "business_impact": "High" | "Medium" | "Low",
-  "follow_up_needed": true | false
-}`;
-
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-pro",
-      config: {
-        systemInstruction: systemPrompt,
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: "object",
-          properties: {
-            classification: { type: "string" },
-            summary: { type: "string" },
-            action_items: { type: "array", items: { type: "string" } },
-            sentiment: { type: "string" },
-            urgency_score: { type: "number" },
-            effort_estimate: { type: "string" },
-            deadline: { type: "string" },
-            context_tags: { type: "array", items: { type: "string" } },
-            stakeholders: { type: "array", items: { type: "string" } },
-            business_impact: { type: "string" },
-            follow_up_needed: { type: "boolean" }
-          },
-          required: ["classification", "summary", "action_items", "sentiment", "urgency_score", "effort_estimate", "deadline", "context_tags", "stakeholders", "business_impact", "follow_up_needed"],
-        },
-      },
-      contents: `Source: ${sourceType.toUpperCase()}\n\nAnalyze this content:\n${content}`,
-    });
-
-    const rawJson = response.text;
-    console.log(`Raw JSON from Gemini: ${rawJson}`);
-
-    if (rawJson) {
-      const data: WorkItemAnalysis = JSON.parse(rawJson);
-      return data;
-    } else {
-      throw new Error("Empty response from Gemini model");
+    if (sanitizedContent.length === 0) {
+      throw new Error('Content is empty after sanitization');
     }
-  } catch (error) {
-    console.error(`Failed to analyze work item with Gemini:`, error);
-    
-    // Return intelligent fallback based on source type and content analysis
-    const isUrgent = content.toLowerCase().includes('urgent') || 
-                    content.toLowerCase().includes('asap') || 
-                    content.toLowerCase().includes('deadline') ||
-                    content.toLowerCase().includes('critical');
-    
-    const isSpam = content.toLowerCase().includes('unsubscribe') ||
-                  content.toLowerCase().includes('marketing') ||
-                  content.toLowerCase().includes('newsletter');
 
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+    const prompt = `
+You are an AI assistant that analyzes work communications and categorizes them for a productivity dashboard.
+
+Analyze the following ${sourceType} content and provide a structured response in JSON format:
+
+Content: ${sanitizedContent}
+
+Please classify this into one of three categories:
+- "urgent" - Requires immediate attention (deadlines, urgent requests, critical issues)
+- "fyi" - Informational but not urgent (updates, announcements, general info)
+- "ignore" - Not work-related or low priority (marketing, spam, personal)
+
+Provide your analysis in this exact JSON format:
+{
+  "classification": "urgent|fyi|ignore",
+  "summary": "15-word max summary focusing on action/impact",
+  "action_items": ["Specific actionable steps"],
+  "sentiment": "positive|neutral|negative",
+  "urgency_score": 1-5,
+  "effort_estimate": "Quick (2-5min)|Medium (15-30min)|Long (1hr+)",
+  "deadline": "Today|This Week|Next Week|No Deadline",
+  "context_tags": ["relevant-tags"],
+  "stakeholders": ["email@domain.com"],
+  "business_impact": "High|Medium|Low",
+  "follow_up_needed": true|false
+}
+
+Focus on business relevance and actionable insights.
+`;
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
+
+    console.log('Raw JSON from Gemini:', text);
+
+    // Parse and validate the response
+    return parseAIResponse(text);
+  } catch (error) {
+    console.error('❌ AI analysis failed:', error);
+
+    // Return a safe default analysis if AI fails
     return {
-      classification: isSpam ? "🗑 Ignore" : isUrgent ? "🔥 Urgent" : "💡 FYI",
-      summary: `${sourceType} communication requiring review and classification`,
-      action_items: ["Review content", "Determine appropriate action"],
-      sentiment: "Neutral",
-      urgency_score: isUrgent ? 4 : isSpam ? 1 : 2,
-      effort_estimate: isUrgent ? "Quick (2-5min)" : "Medium (15-30min)",
-      deadline: isUrgent ? "Today" : "This Week",
-      context_tags: [sourceType, "unprocessed"],
+      classification: 'fyi',
+      summary: 'Content analysis failed - manual review needed',
+      action_items: ['Review this item manually'],
+      sentiment: 'neutral',
+      urgency_score: 1,
+      effort_estimate: 'Quick (2-5min)',
+      deadline: 'No Deadline',
+      context_tags: ['manual-review'],
       stakeholders: [],
-      business_impact: isUrgent ? "High" : isSpam ? "Low" : "Medium",
-      follow_up_needed: !isSpam
+      business_impact: 'Low',
+      follow_up_needed: true
     };
   }
 }
 
 export async function summarizeArticle(text: string): Promise<string> {
-  const prompt = `Please summarize the following text concisely in 15-20 words while maintaining key points:\n\n${text}`;
-
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: prompt,
-    });
+    const sanitizedText = sanitizeContent(text, 'gmail');
 
-    return response.text || "Content summary not available";
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+    const prompt = `Summarize the following text in 2-3 sentences, focusing on the key points:
+
+${sanitizedText}
+
+Summary:`;
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    return response.text();
   } catch (error) {
-    console.error('Failed to summarize with Gemini:', error);
-    return "Summary unavailable - content requires manual review";
+    console.error('❌ Article summarization failed:', error);
+    return 'Summary unavailable';
   }
 }
 
@@ -148,41 +222,39 @@ export interface Sentiment {
   confidence: number;
 }
 
-export async function analyzeSentiment(text: string): Promise<Sentiment> {
+export async function analyzeSentiment(inputText: string): Promise<Sentiment> {
   try {
-    const systemPrompt = `You are a sentiment analysis expert. 
-Analyze the sentiment of the text and provide a rating
-from 1 to 5 stars and a confidence score between 0 and 1.
-Respond with JSON in this format: 
-{'rating': number, 'confidence': number}`;
+    const sanitizedText = sanitizeContent(inputText, 'gmail');
 
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-pro",
-      config: {
-        systemInstruction: systemPrompt,
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: "object",
-          properties: {
-            rating: { type: "number" },
-            confidence: { type: "number" },
-          },
-          required: ["rating", "confidence"],
-        },
-      },
-      contents: text,
-    });
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-    const rawJson = response.text;
+    const prompt = `Analyze the sentiment of the following text and provide a rating from 1-10 (1=very negative, 10=very positive) and confidence level:
 
-    if (rawJson) {
-      const data: Sentiment = JSON.parse(rawJson);
-      return data;
-    } else {
-      throw new Error("Empty response from model");
+Text: ${sanitizedText}
+
+Respond in JSON format:
+{
+  "rating": 1-10,
+  "confidence": 0.0-1.0
+}`;
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const responseText = response.text();
+
+    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      throw new Error('No JSON found in sentiment response');
     }
+
+    const parsed = JSON.parse(jsonMatch[0]) as Partial<Sentiment>;
+
+    return {
+      rating: Math.min(Math.max(Number(parsed.rating) || 5, 1), 10),
+      confidence: Math.min(Math.max(Number(parsed.confidence) || 0.5, 0), 1)
+    };
   } catch (error) {
-    console.error(`Failed to analyze sentiment: ${error}`);
-    return { rating: 3, confidence: 0.5 }; // Neutral fallback
+    console.error('❌ Sentiment analysis failed:', error);
+    return { rating: 5, confidence: 0.5 };
   }
 }

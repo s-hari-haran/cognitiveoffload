@@ -3,8 +3,8 @@
 @tailwind utilities;
 
 :root {
-  /* Glassmorphism & Calm Tech Color Palette - Dark Mode Default */
-  --background: #111827; /* Deep charcoal background */
+  /* Modern Dark Theme Color Palette */
+  --background: #0f172a; /* Slate 900 */
   --foreground: hsl(0, 0%, 95%);
   --muted: rgba(255, 255, 255, 0.1);
   --muted-foreground: hsl(0, 0%, 60%);
@@ -14,7 +14,7 @@
   --card-foreground: hsl(0, 0%, 95%);
   --border: rgba(255, 255, 255, 0.1);
   --input: rgba(255, 255, 255, 0.05);
-  --primary: hsl(217, 91%, 60%); /* Electric blue accent */
+  --primary: hsl(217, 91%, 60%); /* Electric blue */
   --primary-foreground: hsl(0, 0%, 100%);
   --secondary: rgba(255, 255, 255, 0.1);
   --secondary-foreground: hsl(0, 0%, 95%);
@@ -25,23 +25,28 @@
   --ring: hsl(217, 91%, 60%);
   --radius: 0.75rem;
 
-  /* Glassmorphism Design Variables */
+  /* Modern Glassmorphism Design Variables */
   --glass-bg: rgba(255, 255, 255, 0.05);
   --glass-border: rgba(255, 255, 255, 0.1);
   --glass-hover: rgba(255, 255, 255, 0.08);
   
-  /* Category Colors */
-  --urgent: hsl(0, 85%, 60%); /* Red for urgent */
+  /* Category Colors - Refined */
+  --urgent: hsl(0, 84%, 60%); /* Red for urgent */
   --fyi: hsl(217, 91%, 60%); /* Blue for FYI */
   --ignore: hsl(0, 0%, 60%); /* Gray for ignore */
   
-  /* Source Colors */
+  /* Source Colors - Refined */
   --gmail-accent: hsl(217, 91%, 60%); /* Blue for Gmail */
   --slack-accent: hsl(271, 81%, 56%); /* Purple for Slack */
+  
+  /* Gradient Colors */
+  --gradient-blue: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  --gradient-purple: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+  --gradient-blue-purple: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
 }
 
 .dark {
-  --background: #111827;
+  --background: #0f172a;
   --foreground: hsl(0, 0%, 95%);
 }
 
@@ -52,19 +57,20 @@
 
   body {
     @apply font-sans antialiased bg-background text-foreground;
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
   }
 }
 
 @layer components {
-  /* Glassmorphism Base */
+  /* Modern Glassmorphism Base */
   .glass-effect {
     background: var(--glass-bg);
-    backdrop-filter: blur(10px);
+    backdrop-filter: blur(12px);
     border: 1px solid var(--glass-border);
   }
 
   .glass-hover {
-    transition: all 0.3s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .glass-hover:hover {
@@ -73,28 +79,28 @@
     transform: translateY(-2px);
   }
 
-  /* Work Item Cards */
+  /* Modern Work Item Cards */
   .work-item-card {
     @apply glass-effect glass-hover rounded-xl p-6 transition-all duration-300;
   }
 
   .work-item-card.urgent {
     border-left: 4px solid var(--urgent);
-    background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(249, 115, 22, 0.1) 100%);
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.05) 0%, rgba(249, 115, 22, 0.05) 100%);
   }
 
   .work-item-card.fyi {
     border-left: 4px solid var(--fyi);
-    background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(147, 51, 234, 0.1) 100%);
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(147, 51, 234, 0.05) 100%);
   }
 
   .work-item-card.ignore {
     border-left: 4px solid var(--ignore);
-    background: linear-gradient(135deg, rgba(107, 114, 128, 0.1) 0%, rgba(75, 85, 99, 0.1) 100%);
-    opacity: 0.7;
+    background: linear-gradient(135deg, rgba(107, 114, 128, 0.05) 0%, rgba(75, 85, 99, 0.05) 100%);
+    opacity: 0.75;
   }
 
-  /* Source Indicators */
+  /* Source Indicators - Refined */
   .source-gmail {
     color: var(--gmail-accent);
   }
@@ -103,28 +109,31 @@
     color: var(--slack-accent);
   }
 
-  /* Urgency Badges */
+  /* Urgency Badges - Modern */
   .urgency-high {
-    @apply px-2 py-1 rounded-full text-xs font-medium;
-    background: rgba(239, 68, 68, 0.2);
-    color: var(--urgent);
+    @apply px-3 py-1 rounded-full text-xs font-medium;
+    background: rgba(239, 68, 68, 0.15);
+    color: #fca5a5;
+    border: 1px solid rgba(239, 68, 68, 0.3);
   }
 
   .urgency-medium {
-    @apply px-2 py-1 rounded-full text-xs font-medium;
-    background: rgba(59, 130, 246, 0.2);
-    color: var(--fyi);
+    @apply px-3 py-1 rounded-full text-xs font-medium;
+    background: rgba(59, 130, 246, 0.15);
+    color: #93c5fd;
+    border: 1px solid rgba(59, 130, 246, 0.3);
   }
 
   .urgency-low {
-    @apply px-2 py-1 rounded-full text-xs font-medium;
-    background: rgba(107, 114, 128, 0.2);
-    color: var(--ignore);
+    @apply px-3 py-1 rounded-full text-xs font-medium;
+    background: rgba(107, 114, 128, 0.15);
+    color: #d1d5db;
+    border: 1px solid rgba(107, 114, 128, 0.3);
   }
 
-  /* Animation utilities */
+  /* Modern Animation utilities */
   .stagger-children > * {
-    animation: stagger-in 0.5s ease-out forwards;
+    animation: stagger-in 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
     opacity: 0;
     transform: translateY(20px);
   }
@@ -134,16 +143,58 @@
   .stagger-children > *:nth-child(3) { animation-delay: 0.3s; }
   .stagger-children > *:nth-child(4) { animation-delay: 0.4s; }
   .stagger-children > *:nth-child(5) { animation-delay: 0.5s; }
+
+  /* Modern Button Styles */
+  .btn-primary {
+    @apply bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium px-6 py-3 rounded-lg transition-all duration-200 hover:scale-105 shadow-lg;
+  }
+
+  .btn-secondary {
+    @apply bg-white/10 hover:bg-white/20 text-white font-medium px-4 py-2 rounded-lg transition-all duration-200 border border-white/20;
+  }
+
+  /* Modern Card Styles */
+  .card-modern {
+    @apply bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10 hover:bg-white/8 transition-all duration-300;
+  }
+
+  /* Modern Navigation */
+  .nav-modern {
+    @apply bg-white/5 backdrop-blur-xl border-b border-white/10 shadow-lg;
+  }
+
+  /* Modern Badge Styles */
+  .badge-modern {
+    @apply px-3 py-1 rounded-full text-xs font-medium bg-white/10 text-white border border-white/20;
+  }
+
+  .badge-urgent {
+    @apply bg-red-500/20 text-red-300 border-red-500/30;
+  }
+
+  .badge-fyi {
+    @apply bg-blue-500/20 text-blue-300 border-blue-500/30;
+  }
+
+  .badge-ignore {
+    @apply bg-gray-500/20 text-gray-300 border-gray-500/30;
+  }
 }
 
 @keyframes stagger-in {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { 
+    opacity: 0; 
+    transform: translateY(20px); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
 }
 
 @keyframes pulse-subtle {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.8; }
+  0%, 100% { opacity: 0.2; }
+  50% { opacity: 0.4; }
 }
 
 @keyframes slide-in {
@@ -156,13 +207,23 @@
   to { transform: rotate(360deg); }
 }
 
-/* Floating shapes for hero section */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scale-in {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+/* Modern Floating shapes for hero section */
 .floating-shape {
   position: absolute;
   border-radius: 50%;
   filter: blur(40px);
   opacity: 0.2;
-  animation: pulse-subtle 2s infinite;
+  animation: pulse-subtle 3s infinite;
 }
 
 .floating-shape-1 {
@@ -170,7 +231,7 @@
   left: 40px;
   width: 80px;
   height: 80px;
-  background: var(--vibrant-purple);
+  background: #3b82f6;
 }
 
 .floating-shape-2 {
@@ -178,8 +239,8 @@
   right: 80px;
   width: 64px;
   height: 64px;
-  background: var(--accent-green);
-  animation-delay: 0.5s;
+  background: #8b5cf6;
+  animation-delay: 1s;
 }
 
 .floating-shape-3 {
@@ -187,6 +248,42 @@
   left: 25%;
   width: 48px;
   height: 48px;
-  background: var(--deep-blue);
-  animation-delay: 1s;
+  background: #10b981;
+  animation-delay: 2s;
+}
+
+/* Modern Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Modern Focus styles */
+.focus-modern:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* Modern Loading states */
+.loading-shimmer {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
 }
