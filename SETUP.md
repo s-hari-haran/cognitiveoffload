@@ -6,7 +6,7 @@ Create a `.env` file in the root directory with the following variables:
 
 ```env
 # Database Configuration
-DATABASE_URL=postgresql://neondb_owner:npg_GvISQKB7m9Lf@ep-icy-violet-aec93fze-pooler.c-2.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require
+DATABASE_URL=your-database-connection-string-here
 
 # JWT Secret (generate a secure random string)
 JWT_SECRET=your-super-secret-jwt-key-here
