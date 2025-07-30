@@ -1,4 +1,4 @@
-# 🧠 Cognitive Canvas
+# 🧠 Cognitive Offload
 
 **AI-powered workplace dashboard that transforms scattered communications into organized, prioritized, actionable insights.**
 
